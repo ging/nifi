@@ -17,7 +17,7 @@ import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.processor.util.pattern.*;
 import org.apache.nifi.processor.util.pattern.PartialFunctions.FlowFileGroup;
-import org.apache.nifi.processors.ngsi.NGSI.backends.MySQLBackend;
+import org.apache.nifi.processors.ngsi.NGSI.backends.PostgreSQLBackend;
 import org.apache.nifi.processors.ngsi.NGSI.utils.NGSIEvent;
 import org.apache.nifi.processors.ngsi.NGSI.utils.NGSIUtils;
 import org.apache.nifi.processors.standard.util.JdbcCommon;
@@ -31,7 +31,7 @@ import static org.apache.nifi.processor.util.pattern.ExceptionHandler.createOnEr
 
 @SupportsBatching
 @InputRequirement(Requirement.INPUT_REQUIRED)
-@Tags({"sql", "put", "rdbms", "database", "create", "insert", "relational","NGSIv2", "NGSI","FIWARE"})
+@Tags({"Postgresql","sql", "put", "rdbms", "database", "create", "insert", "relational","NGSIv2", "NGSI","FIWARE"})
 @CapabilityDescription("Create a Data Base if not exits using the information coming from and NGSI event converted to flow file." +
         "After insert all of the vales of the flow file content extraction the entities and attributes")
 
@@ -41,7 +41,7 @@ import static org.apache.nifi.processor.util.pattern.ExceptionHandler.createOnEr
 })
 
 
-public class NGSIToMySQL extends AbstractSessionFactoryProcessor {
+public class NGSIToPostgreSQL extends AbstractSessionFactoryProcessor {
     static final PropertyDescriptor CONNECTION_POOL = new PropertyDescriptor.Builder()
             .name("JDBC Connection Pool")
             .description("Specifies the JDBC Connection Pool to use in order to convert the JSON message to a SQL statement. "
@@ -132,7 +132,7 @@ public class NGSIToMySQL extends AbstractSessionFactoryProcessor {
     private static final String FRAGMENT_ID_ATTR = FragmentAttributes.FRAGMENT_ID.key();
     private static final String FRAGMENT_INDEX_ATTR = FragmentAttributes.FRAGMENT_INDEX.key();
     private static final String FRAGMENT_COUNT_ATTR = FragmentAttributes.FRAGMENT_COUNT.key();
-    private static final MySQLBackend mysql = new MySQLBackend();
+    private static final PostgreSQLBackend postgres = new PostgreSQLBackend();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -215,9 +215,9 @@ public class NGSIToMySQL extends AbstractSessionFactoryProcessor {
 
             NGSIUtils n = new NGSIUtils();
             final NGSIEvent event=n.getEventFromFlowFile(flowFile,session,context.getProperty(NGSI_VERSION).getValue());
-            final String tableName = mysql.buildTableName(event, context.getProperty(DATA_MODEL).getValue(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
-            final String dbName = mysql.buildDbName(event.getFiwareService(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
-            final String sql = mysql.insertQuery (event, tableName, context.getProperty(ATTR_PERSISTENCE).getValue());
+            final String tableName = postgres.buildTableName(event, context.getProperty(DATA_MODEL).getValue(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
+            final String schemaName = postgres.buildSchemaName(event.getFiwareService(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
+            final String sql = postgres.insertQuery (event,schemaName, tableName, context.getProperty(ATTR_PERSISTENCE).getValue());
             // Get or create the appropriate PreparedStatement to use.
             final StatementFlowFileEnclosure enclosure = sqlToEnclosure
                     .computeIfAbsent(sql, k -> {
@@ -231,9 +231,8 @@ public class NGSIToMySQL extends AbstractSessionFactoryProcessor {
                 final PreparedStatement stmt = enclosure.getCachedStatement(conn);
                 JdbcCommon.setParameters(stmt, flowFile.getAttributes());
                 try{
-                    stmt.execute(mysql.createDb(dbName));
-                    stmt.execute("Use "+dbName);
-                    stmt.execute(mysql.createTable(tableName,context.getProperty(ATTR_PERSISTENCE).getValue()));
+                    conn.createStatement().execute(postgres.createSchema(schemaName));
+                    conn.createStatement().execute(postgres.createTable(schemaName,tableName,context.getProperty(ATTR_PERSISTENCE).getValue()));
 
                 }catch (SQLException s){
                     getLogger().error(s.toString());
@@ -252,8 +251,9 @@ public class NGSIToMySQL extends AbstractSessionFactoryProcessor {
 
             NGSIUtils n = new NGSIUtils();
             NGSIEvent event=n.getEventFromFlowFile(flowFile,session,context.getProperty(NGSI_VERSION).getValue());
-            final String tableName = mysql.buildTableName(event, context.getProperty(DATA_MODEL).getValue(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
-            final String sql = mysql.insertQuery (event, tableName, context.getProperty(ATTR_PERSISTENCE).getValue());
+            final String schemaName = postgres.buildSchemaName(event.getFiwareService(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
+            final String tableName = postgres.buildTableName(event, context.getProperty(DATA_MODEL).getValue(), context.getProperty(ENABLE_ENCODING).asBoolean(),context.getProperty(ENABLE_LOWERCASE).asBoolean());
+            final String sql = postgres.insertQuery (event,schemaName, tableName, context.getProperty(ATTR_PERSISTENCE).getValue());
             // Get or create the appropriate PreparedStatement to use.
             final StatementFlowFileEnclosure enclosure = sqlToEnclosure
                     .computeIfAbsent(sql, k -> {

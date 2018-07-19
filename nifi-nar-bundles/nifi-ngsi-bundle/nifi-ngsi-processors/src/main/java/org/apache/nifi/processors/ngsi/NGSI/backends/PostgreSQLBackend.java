@@ -9,9 +9,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-public class MySQLBackend {
+public class PostgreSQLBackend {
 
-    public MySQLBackend() {
+    public PostgreSQLBackend() {
     }
 
     public ArrayList listOfFields (String attrPersistence){
@@ -97,29 +97,29 @@ public class MySQLBackend {
         return fieldsForInsert + ")";
     } // getFieldsForInsert
 
-    public String buildDbName(String service,boolean enableEncoding,boolean enableLowercase) {
+    public String buildSchemaName(String service,boolean enableEncoding,boolean enableLowercase) {
         String dbName="";
         if (enableEncoding) {
-            dbName = NGSICharsets.encodeMySQL((enableLowercase)?service.toLowerCase():service);
+            dbName = NGSICharsets.encodePostgreSQL((enableLowercase)?service.toLowerCase():service);
         } else {
             dbName = NGSICharsets.encode((enableLowercase)?service.toLowerCase():service, false, true);
         } // if else
 
-        if (dbName.length() > NGSIConstants.MYSQL_MAX_NAME_LEN) {
+        if (dbName.length() > NGSIConstants.POSTGRESQL_MAX_NAME_LEN) {
             System.out.println("Building database name '" + dbName
-                    + "' and its length is greater than " + NGSIConstants.MYSQL_MAX_NAME_LEN);
+                    + "' and its length is greater than " + NGSIConstants.POSTGRESQL_MAX_NAME_LEN);
         } // if
         return dbName;
     }
 
-    public String createDb(String dbName) {
-        String query = "create database if not exists `" + dbName + "`;";
+    public String createSchema(String schemaName) {
+        String query = "create schema if not exists " + schemaName + ";";
         return query;
     }
 
-    public String createTable(String tableName, String attrPersistence){
+    public String createTable(String schemaName,String tableName, String attrPersistence){
 
-        String query= "create table if not exists `" + tableName + "`" + getFieldsForCreate(attrPersistence) + ";";
+        String query= "create table if not exists "+schemaName+"." + tableName + " " + getFieldsForCreate(attrPersistence) + ";";
         return query;
     }
 
@@ -132,14 +132,14 @@ public class MySQLBackend {
         if (enableEncoding) {
             switch(dataModel) {
                 case "db-by-service-path":
-                    tableName = NGSICharsets.encodeMySQL(servicePath);
+                    tableName = NGSICharsets.encodePostgreSQL(servicePath);
                     break;
                 case "db-by-entity":
-                    tableName = NGSICharsets.encodeMySQL(servicePath)
+                    tableName = NGSICharsets.encodePostgreSQL(servicePath)
                             + CommonConstants.CONCATENATOR
-                            + NGSICharsets.encodeMySQL(entity)
+                            + NGSICharsets.encodePostgreSQL(entity)
                             + CommonConstants.CONCATENATOR
-                            + NGSICharsets.encodeMySQL(entityType);
+                            + NGSICharsets.encodePostgreSQL(entityType);
                     break;
                 default:
                     System.out.println("Unknown data model '" + dataModel.toString()
@@ -167,16 +167,16 @@ public class MySQLBackend {
             } // switch
         } // if else
 
-        if (tableName.length() > NGSIConstants.MYSQL_MAX_NAME_LEN) {
+        if (tableName.length() > NGSIConstants.POSTGRESQL_MAX_NAME_LEN) {
             System.out.println("Building table name '" + tableName
-                    + "' and its length is greater than " + NGSIConstants.MYSQL_MAX_NAME_LEN);
+                    + "' and its length is greater than " + NGSIConstants.POSTGRESQL_MAX_NAME_LEN);
         } // if
 
         return tableName;
     }
 
-    public String insertQuery (NGSIEvent event, String tableName, String dataModel){
-        String query="Insert into `" + tableName + "` " +this.getFieldsForInsert(dataModel)+ " values " +this.getValuesForInsert(event);
+    public String insertQuery (NGSIEvent event, String schemaName, String tableName, String dataModel){
+        String query="Insert into "+schemaName+"."+ tableName + " " +this.getFieldsForInsert(dataModel)+ " values " +this.getValuesForInsert(event);
         return query;
     }
 }
