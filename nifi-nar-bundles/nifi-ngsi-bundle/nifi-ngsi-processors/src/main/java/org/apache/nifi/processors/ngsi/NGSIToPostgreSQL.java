@@ -1,10 +1,7 @@
 package org.apache.nifi.processors.ngsi;
 
-import org.apache.nifi.annotation.behavior.InputRequirement;
+import org.apache.nifi.annotation.behavior.*;
 import org.apache.nifi.annotation.behavior.InputRequirement.Requirement;
-import org.apache.nifi.annotation.behavior.SupportsBatching;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -21,7 +18,6 @@ import org.apache.nifi.processors.ngsi.NGSI.backends.PostgreSQLBackend;
 import org.apache.nifi.processors.ngsi.NGSI.utils.NGSIEvent;
 import org.apache.nifi.processors.ngsi.NGSI.utils.NGSIUtils;
 import org.apache.nifi.processors.standard.util.JdbcCommon;
-
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
